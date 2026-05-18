@@ -1,5 +1,3 @@
-<![CDATA[<div align="center">
-
 # PixelCloak
 
 ### Adversarial Privacy Filter for Facial Recognition Defense
@@ -11,36 +9,40 @@
 
 *Imperceptible noise. Invisible to humans. Devastating to models.*
 
-[Features](#features) · [How It Works](#how-it-works) · [Quick Start](#quick-start) · [Architecture](#architecture) · [Tech Stack](#tech-stack)
-
 ---
-
-</div>
 
 ## The Problem
 
-Facial recognition systems are deployed at airports, offices, and across social media. They raise serious privacy concerns — people should have the ability to opt out of being identified. Simple approaches like blurring destroy the photo and are easily defeated by modern models trained on noisy data.
+Facial recognition systems are deployed at airports, offices, and across social media. They raise serious privacy concerns — people should have the ability to opt out of being identified.
 
-## The Solution
+The obvious answer? Blur the photo. But that doesn't actually work.
 
-PixelCloak uses **adversarial perturbation** — a mathematically precise attack on the neural network itself. Instead of destroying image quality, it exploits the model's own gradient structure to add noise that is:
+## Why Blurring Doesn't Work
 
-- **Imperceptible** — bounded by an L∞ norm (ε), no pixel changes more than ~7/255
-- **Effective** — causes the model's face embedding to collapse (cosine similarity → 0)
-- **Provable** — verification engine compares embeddings before and after
+Modern face recognition models are **trained on noisy, low-res, blurry images**. They're robust to blur by design. You'd have to blur so much that the photo becomes useless for humans too — you've destroyed the image to protect it.
 
-## Features
+```
+Blurred image:
+  Human sees:  "This is blurry, clearly tampered"
+  Model sees:  "Still probably John, 70% confidence"
 
-| Feature | Description |
-|---|---|
-| **FGSM Attack** | Fast Gradient Sign Method — single-step perturbation using the sign of the input gradient |
-| **PGD Attack** | Projected Gradient Descent — iterative multi-step attack, strictly stronger than FGSM |
-| **L∞ Bounded** | Perturbation mathematically constrained by epsilon — imperceptible to humans |
-| **Face Detection** | MTCNN-based automatic face detection and cropping to 160×160 |
-| **Embedding Verification** | Cosine similarity between original and adversarial embeddings proves the attack works |
-| **Real-time UI** | Streamlit interface with attack controls, side-by-side comparison, and download |
+Adversarial image (PixelCloak):
+  Human sees:  "This is John"  (looks completely normal)
+  Model sees:  "This is absolutely not John, 0.02% confidence"
+```
 
-## How It Works
+| | Blurring | Adversarial Perturbation |
+|---|---|---|
+| **Visible to humans?** | Yes, obviously | No, imperceptible |
+| **Model still works?** | Partially, yes | No — embedding collapses |
+| **Mathematical guarantee?** | None | L∞ bounded by ε |
+| **Photo still usable?** | Degraded | Looks identical |
+
+Think of it this way: **blurring is like putting a mask on someone's face — obvious to everyone. Adversarial perturbation is like changing their fingerprint — invisible to the naked eye, but the scanner reads a completely different identity.**
+
+## How PixelCloak Works
+
+PixelCloak doesn't destroy image quality. It exploits the **mathematical structure** of the neural network. Because face recognition models compute gradients, we can compute exactly how to minimally perturb the input to maximally change the output.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -62,6 +64,17 @@ PixelCloak uses **adversarial perturbation** — a mathematically precise attack
 
 **FGSM** does this in one step. **PGD** iterates it with smaller steps, projecting back into the ε-ball after each iteration — a constrained optimization that finds stronger perturbations.
 
+## Features
+
+| Feature | Description |
+|---|---|
+| **FGSM Attack** | Fast Gradient Sign Method — single-step perturbation using the sign of the input gradient |
+| **PGD Attack** | Projected Gradient Descent — iterative multi-step attack, strictly stronger than FGSM |
+| **L∞ Bounded** | Perturbation mathematically constrained by epsilon — imperceptible to humans |
+| **Face Detection** | MTCNN-based automatic face detection and cropping to 160×160 |
+| **Embedding Verification** | Cosine similarity between original and adversarial embeddings proves the attack works |
+| **Real-time UI** | Streamlit interface with attack controls, side-by-side comparison, and download |
+
 ## Quick Start
 
 ### Prerequisites
@@ -72,7 +85,7 @@ PixelCloak uses **adversarial perturbation** — a mathematically precise attack
 ### Installation
 
 ```bash
-git clone https://github.com/yourusername/PixelCloak.git
+git clone https://github.com/abhiramreddy4445/PixelCloak.git
 cd PixelCloak
 pip install -r requirements.txt
 ```
@@ -127,26 +140,10 @@ PixelCloak/
 | **Frontend** | Streamlit | Rapid prototyping with interactive widgets |
 | **Attack Math** | Custom FGSM/PGD | From-scratch implementation with educational comments |
 
-## Why Not Just Blur?
-
-| | Blurring | Adversarial Perturbation |
-|---|---|---|
-| **Visible?** | Yes, obviously | No, imperceptible |
-| **Model still works?** | Partially, yes | No, embedding collapses |
-| **Mathematical guarantee?** | None | L∞ bounded by ε |
-| **Photo still usable?** | Degraded | Looks identical |
-
-Blurring is a privacy illusion. Modern face recognition models are trained on noisy, low-res, blurry images — they're robust to blur by design. Adversarial perturbation exploits the model's own gradient structure to push the embedding across a decision boundary while changing almost nothing visually.
-
 ## License
 
 MIT — see [LICENSE](LICENSE) for details.
 
 ---
 
-<div align="center">
-
 **Built with PyTorch · FaceNet (InceptionResnetV1) · Streamlit · MTCNN**
-
-</div>
-]]>
