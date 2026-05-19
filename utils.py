@@ -76,6 +76,61 @@ def tensor_to_noise_map(tensor: torch.Tensor) -> Image.Image:
     return Image.fromarray(arr)
 
 
+def apply_noise_to_original(
+    original: Image.Image,
+    noise_tensor: torch.Tensor,
+    bbox: list,
+) -> Image.Image:
+    """
+    Apply the adversarial noise pattern directly to the face region of the
+    original full-size image. Uses the tight bounding box (no margin)
+    so only the face area gets perturbed.
+
+    Args:
+        original: The full original image (any size).
+        noise_tensor: (1, 3, 160, 160) perturbation from the attack.
+        bbox: [x1, y1, x2, y2] bounding box from MTCNN detection.
+
+    Returns:
+        Full-size PIL image with noise applied to the face region only.
+    """
+    x1, y1, x2, y2 = [int(c) for c in bbox]
+    w, h = original.size
+
+    # Clamp to image bounds (no margin expansion)
+    x1 = max(0, x1)
+    y1 = max(0, y1)
+    x2 = min(w, x2)
+    y2 = min(h, y2)
+    box_w, box_h = x2 - x1, y2 - y1
+
+    if box_w <= 0 or box_h <= 0:
+        return original.copy()
+
+    # Get noise as numpy array in [-1, 1] range, shape (H, W, C)
+    noise = noise_tensor.squeeze(0).detach().cpu().numpy()
+    noise = np.transpose(noise, (1, 2, 0))  # (C,H,W) -> (H,W,C)
+
+    # Convert noise from [-1,1] tensor space to pixel space [-127.5, 127.5]
+    noise_pixels = noise * 127.5
+
+    # Resize noise to match the bounding box dimensions
+    noise_pil = Image.fromarray(((noise_pixels + 127.5)).clip(0, 255).astype(np.uint8))
+    noise_resized = noise_pil.resize((box_w, box_h), Image.BILINEAR)
+    noise_arr = np.array(noise_resized, dtype=np.float32) - 127.5
+
+    # Apply noise to the face region of the original image
+    result = original.copy()
+    orig_arr = np.array(result, dtype=np.float32)
+    face_region = orig_arr[y1:y2, x1:x2, :]
+
+    # Add noise and clip to valid range
+    face_region = (face_region + noise_arr).clip(0, 255)
+    orig_arr[y1:y2, x1:x2, :] = face_region
+
+    return Image.fromarray(orig_arr.astype(np.uint8))
+
+
 def compute_noise_magnitude(original: torch.Tensor, adversarial: torch.Tensor) -> float:
     """Return the L∞ norm: max absolute pixel change."""
     return torch.max(torch.abs(adversarial - original)).item()

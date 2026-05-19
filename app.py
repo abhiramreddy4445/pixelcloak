@@ -17,7 +17,7 @@ from PIL import Image
 
 from models import load_facenet, load_mtcnn, detect_and_crop_face, get_device
 from attacks import fgsm_attack, pgd_attack
-from utils import pil_to_tensor, tensor_to_pil, tensor_to_noise_map, compute_noise_magnitude
+from utils import pil_to_tensor, tensor_to_pil, tensor_to_noise_map, compute_noise_magnitude, apply_noise_to_original
 
 # ──────────────────────────────────────────────
 # Page config
@@ -411,18 +411,30 @@ else:
         noise_image = tensor_to_noise_map(noise_tensor)
         l_inf = compute_noise_magnitude(face_tensor, adv_tensor)
 
+        # Apply adversarial noise to the face region of the original image
+        full_adv_image = apply_noise_to_original(original_image, noise_tensor, bbox)
+
+
         # ── Results section ──
         st.markdown("---")
         st.markdown("### Results")
 
-        r1, r2, r3 = st.columns(3)
+        r1, r2 = st.columns(2)
         with r1:
-            st.markdown('<div class="img-container"><div class="caption">Original Face</div></div>', unsafe_allow_html=True)
-            st.image(cropped_face, use_container_width=True)
+            st.markdown('<div class="img-container"><div class="caption">Original Image</div></div>', unsafe_allow_html=True)
+            st.image(original_image, use_container_width=True)
         with r2:
-            st.markdown('<div class="img-container"><div class="caption">Adversarial Face</div></div>', unsafe_allow_html=True)
-            st.image(adv_image, use_container_width=True)
+            st.markdown('<div class="img-container"><div class="caption">Adversarial Image (face perturbed)</div></div>', unsafe_allow_html=True)
+            st.image(full_adv_image, use_container_width=True)
+
+        r3, r4, r5 = st.columns(3)
         with r3:
+            st.markdown('<div class="img-container"><div class="caption">Original Face (160x160)</div></div>', unsafe_allow_html=True)
+            st.image(cropped_face, use_container_width=True)
+        with r4:
+            st.markdown('<div class="img-container"><div class="caption">Adversarial Face (160x160)</div></div>', unsafe_allow_html=True)
+            st.image(adv_image, use_container_width=True)
+        with r5:
             st.markdown('<div class="img-container"><div class="caption">Noise Pattern (10x amplified)</div></div>', unsafe_allow_html=True)
             st.image(noise_image, use_container_width=True)
 
@@ -490,9 +502,9 @@ else:
         # ── Download button ──
         st.markdown("")
         buf = io.BytesIO()
-        adv_image.save(buf, format="PNG")
+        full_adv_image.save(buf, format="PNG")
         st.download_button(
-            label="  Download Adversarial Image",
+            label="  Download Adversarial Image (Full)",
             data=buf.getvalue(),
             file_name="pixelcloak_adversarial.png",
             mime="image/png",
